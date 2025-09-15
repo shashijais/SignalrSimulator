@@ -6,22 +6,40 @@ namespace SignalrSimulator
     {
         static async Task Main()
         {
-            var client = new HttpClient();
-            var tasks = new List<Task>();
-            Console.WriteLine("Starting simulation...");
-            var sw = Stopwatch.StartNew();
-            for (int i = 1; i <= 36000; i++) // 300 RPS for 2 min (example) 5 mins quite big time here
+            try
             {
-                string rfId = $"RFID{i}";
-                tasks.Add(client.GetAsync($"http://localhost:5153/api/lookup?rfId={rfId}"));
-                Console.WriteLine($"Dispatched request {i}");
-                await Task.Delay(3); // ~300 RPS pacing
-            }
-            await Task.WhenAll(tasks);
-            sw.Stop();
+                var url = GetUrl(useThreadApp: true);
+                var client = new HttpClient();
+                var tasks = new List<Task>();
+                Console.WriteLine("Starting simulation...");
+                var sw = Stopwatch.StartNew();
+                for (int i = 1; i <= 36000; i++) // ~300 RPS for 2 min example
+                {
+                    string rfId = $"RFID{i}";
+                    tasks.Add(client.GetAsync($"{url}api/lookup?rfId={rfId}"));
+                    if (i % 500 == 0)
+                        Console.WriteLine($"Dispatched request {i}"); //log status every 500th request
+                    await Task.Delay(1); // ~300 RPS pacing
+                }
+                await Task.WhenAll(tasks);
+                sw.Stop();
 
-            Console.WriteLine($"Completed {tasks.Count} requests in {sw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"Completed {tasks.Count} requests in {sw.ElapsedMilliseconds} ms");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
         }
+
+        static string GetUrl(bool useThreadApp)
+            {
+                var threadAppUrl = "http://localhost:5083/";
+                var appUrl = "http://localhost:5153/";
+                return useThreadApp ? threadAppUrl : appUrl;
+            }            
+
+        
     }
 }
 
